@@ -92,3 +92,23 @@ fn next_matches(
         None => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::token::{Token, TokenType};
+
+    use super::scan_tokens;
+
+    #[test]
+    fn punctuators() {
+        // let source = "(){};,+-*!===<=>=!=<>/.";
+        let source = "()";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::LeftParen, "(".into(), 1),
+            Token::new(TokenType::RightParen, ")".into(), 1),
+            Token::new(TokenType::Eof, "".into(), 1),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+}
