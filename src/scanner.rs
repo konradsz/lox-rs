@@ -2,83 +2,93 @@ use std::{iter::Peekable, str::CharIndices};
 
 use crate::token::{Token, TokenType};
 
-pub struct Scanner {
-    source: String,
+struct ScannerState {
+    line: usize,
+    start: usize,
+    current: usize,
 }
 
-impl Scanner {
-    pub fn new(source: String) -> Self {
-        Self { source }
-    }
+pub fn scan_tokens(source: &str) -> Vec<Token> {
+    let mut tokens = Vec::new();
+    let mut state = ScannerState {
+        line: 1,
+        start: 0,
+        current: 0,
+    };
 
-    pub fn scan_tokens(&self) -> Vec<Token> {
-        let mut tokens = Vec::new();
-        let mut line = 1;
-        // let mut start = 0;
-        // let mut current = 0;
+    let mut chars = source.char_indices().peekable();
+    tokens.extend(std::iter::from_fn(move || loop {
+        let (idx, c) = chars.next()?;
+        state.current = idx;
 
-        let mut chars = self.source.char_indices().peekable();
-        tokens.extend(std::iter::from_fn(move || loop {
-            let (idx, c) = chars.next()?;
-
-            match c {
-                '(' => {
-                    return Some(Token::new(
-                        TokenType::LeftParen,
-                        self.source[idx..idx + c.len_utf8()].to_string(),
-                        line,
-                    ))
-                }
-                ')' => return Some(Token::new(TokenType::RightParen, c.to_string(), line)),
-                '{' => return Some(Token::new(TokenType::LeftBrace, c.to_string(), line)),
-                '}' => return Some(Token::new(TokenType::RightBrace, c.to_string(), line)),
-                ',' => return Some(Token::new(TokenType::Comma, c.to_string(), line)),
-                '.' => return Some(Token::new(TokenType::Dot, c.to_string(), line)),
-                '-' => return Some(Token::new(TokenType::Minus, c.to_string(), line)),
-                '+' => return Some(Token::new(TokenType::Plus, c.to_string(), line)),
-                ';' => return Some(Token::new(TokenType::Semicolon, c.to_string(), line)),
-                '*' => return Some(Token::new(TokenType::Star, c.to_string(), line)),
-                // '!' => match chars.peek() {
-                //     Some((_, next)) => {
-                //         if next == &'=' {
-                //             chars.next().unwrap();
-                //             return Some(Token::new(TokenType::BangEqual, c.to_string(), line));
-                //         }
-                //     }
-                //     None => return Some(Token::new(TokenType::Bang, c.to_string(), line)),
-                // },
-                '!' => {
-                    if Self::next_matches(&mut chars, '=') {
-                        return Some(Token::new(TokenType::BangEqual, c.to_string(), line));
-                    } else {
-                        return Some(Token::new(TokenType::Bang, c.to_string(), line));
-                    }
-                }
-                ' ' | '\t' => (),
-                '\n' => line += 1,
-                _ => {
-                    // report error
-                    ()
-                }
-            }
-            continue;
-        }));
-
-        tokens.push(Token::new(TokenType::Eof, "".into(), line));
-        tokens
-    }
-
-    fn next_matches(chars: &mut Peekable<CharIndices>, next: char) -> bool {
-        match chars.peek() {
-            Some((_, value)) => {
-                if value == &next {
-                    chars.next().unwrap();
-                    true
+        match c {
+            '(' => return Some(new_token(TokenType::LeftParen, source, &mut state)),
+            ')' => return Some(new_token(TokenType::RightParen, source, &mut state)),
+            '{' => return Some(new_token(TokenType::LeftBrace, source, &mut state)),
+            '}' => return Some(new_token(TokenType::RightBrace, source, &mut state)),
+            ',' => return Some(new_token(TokenType::Comma, source, &mut state)),
+            '.' => return Some(new_token(TokenType::Dot, source, &mut state)),
+            '-' => return Some(new_token(TokenType::Minus, source, &mut state)),
+            '+' => return Some(new_token(TokenType::Plus, source, &mut state)),
+            ';' => return Some(new_token(TokenType::Semicolon, source, &mut state)),
+            '*' => return Some(new_token(TokenType::Star, source, &mut state)),
+            '!' => {
+                if next_matches(&mut chars, '=', &mut state) {
+                    return Some(new_token(TokenType::BangEqual, source, &mut state));
                 } else {
-                    false
+                    return Some(new_token(TokenType::Bang, source, &mut state));
                 }
             }
-            None => false,
+            '=' => {
+                if next_matches(&mut chars, '=', &mut state) {
+                    return Some(new_token(TokenType::EqualEqual, source, &mut state));
+                } else {
+                    return Some(new_token(TokenType::Equal, source, &mut state));
+                }
+            }
+            ' ' | '\t' => state.start += 1,
+            '\n' => {
+                state.line += 1;
+                state.start += 1;
+            }
+            _ => {
+                // report error
+                ()
+            }
         }
+        continue;
+    }));
+
+    tokens.push(Token::new(
+        TokenType::Eof,
+        "".into(),
+        source.lines().count(),
+    ));
+    tokens
+}
+
+fn new_token(token_type: TokenType, source: &str, state: &mut ScannerState) -> Token {
+    let from = state.start;
+    let to = state.current;
+    state.start = state.current + 1;
+    Token::new(token_type, source[from..=to].to_string(), state.line)
+}
+
+fn next_matches(
+    chars: &mut Peekable<CharIndices>,
+    next: char,
+    scanner_state: &mut ScannerState,
+) -> bool {
+    match chars.peek() {
+        Some((_, value)) => {
+            if value == &next {
+                chars.next().unwrap();
+                scanner_state.current += 1;
+                true
+            } else {
+                false
+            }
+        }
+        None => false,
     }
 }

@@ -1,5 +1,4 @@
 use anyhow::{bail, Context, Result};
-use scanner::Scanner;
 use std::{
     env,
     io::{BufRead, Write},
@@ -49,8 +48,7 @@ fn run_file(file_name: &str) -> Result<()> {
 }
 
 fn run(source: String) {
-    let scanner = Scanner::new(source);
-    let tokens = scanner.scan_tokens();
+    let tokens = scanner::scan_tokens(&source);
 
     for token in tokens {
         println!("{token:?}");
