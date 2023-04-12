@@ -46,6 +46,35 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                     return Some(new_token(TokenType::Equal, source, &mut state));
                 }
             }
+            '<' => {
+                if next_matches(&mut chars, '=', &mut state) {
+                    return Some(new_token(TokenType::LessEqual, source, &mut state));
+                } else {
+                    return Some(new_token(TokenType::Less, source, &mut state));
+                }
+            }
+            '>' => {
+                if next_matches(&mut chars, '=', &mut state) {
+                    return Some(new_token(TokenType::GreaterEqual, source, &mut state));
+                } else {
+                    return Some(new_token(TokenType::Greater, source, &mut state));
+                }
+            }
+            '/' => {
+                if next_matches(&mut chars, '/', &mut state) {
+                    while let Some((_, c)) = chars.peek() {
+                        state.current += 1;
+                        state.start = state.current;
+                        if c == &'\n' {
+                            break;
+                        } else {
+                            chars.next();
+                        }
+                    }
+                } else {
+                    return Some(new_token(TokenType::Slash, source, &mut state));
+                }
+            }
             ' ' | '\t' => state.start += 1,
             '\n' => {
                 state.line += 1;
@@ -69,9 +98,9 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
 
 fn new_token(token_type: TokenType, source: &str, state: &mut ScannerState) -> Token {
     let from = state.start;
-    let to = state.current;
-    state.start = state.current + 1;
-    Token::new(token_type, source[from..=to].to_string(), state.line)
+    let to = state.current + 1;
+    state.start = to;
+    Token::new(token_type, source[from..to].to_string(), state.line)
 }
 
 fn next_matches(
@@ -80,9 +109,9 @@ fn next_matches(
     scanner_state: &mut ScannerState,
 ) -> bool {
     match chars.peek() {
-        Some((_, value)) => {
-            if value == &next {
-                chars.next().unwrap();
+        Some((_, c)) => {
+            if c == &next {
+                chars.next();
                 scanner_state.current += 1;
                 true
             } else {
@@ -101,13 +130,41 @@ mod tests {
 
     #[test]
     fn punctuators() {
-        // let source = "(){};,+-*!===<=>=!=<>/.";
-        let source = "()";
+        let source = "(){};,+-*!===<=>=!=<>/.";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::LeftParen, "(".into(), 1),
             Token::new(TokenType::RightParen, ")".into(), 1),
+            Token::new(TokenType::LeftBrace, "{".into(), 1),
+            Token::new(TokenType::RightBrace, "}".into(), 1),
+            Token::new(TokenType::Semicolon, ";".into(), 1),
+            Token::new(TokenType::Comma, ",".into(), 1),
+            Token::new(TokenType::Plus, "+".into(), 1),
+            Token::new(TokenType::Minus, "-".into(), 1),
+            Token::new(TokenType::Star, "*".into(), 1),
+            Token::new(TokenType::BangEqual, "!=".into(), 1),
+            Token::new(TokenType::EqualEqual, "==".into(), 1),
+            Token::new(TokenType::LessEqual, "<=".into(), 1),
+            Token::new(TokenType::GreaterEqual, ">=".into(), 1),
+            Token::new(TokenType::BangEqual, "!=".into(), 1),
+            Token::new(TokenType::Less, "<".into(), 1),
+            Token::new(TokenType::Greater, ">".into(), 1),
+            Token::new(TokenType::Slash, "/".into(), 1),
+            Token::new(TokenType::Dot, ".".into(), 1),
             Token::new(TokenType::Eof, "".into(), 1),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+
+    #[test]
+    fn comments() {
+        let source = "/////  \n/*//*-\n+";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::Slash, "/".into(), 2),
+            Token::new(TokenType::Star, "*".into(), 2),
+            Token::new(TokenType::Plus, "+".into(), 3),
+            Token::new(TokenType::Eof, "".into(), 3),
         ];
         assert_eq!(tokens, expected_tokens);
     }
