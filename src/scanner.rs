@@ -62,6 +62,7 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
             }
             '/' => {
                 if next_matches(&mut chars, '/', &mut state) {
+                    // comment, ignore the rest of the line
                     ignore_until_new_line(&mut chars, &mut state);
                 } else {
                     return Some(new_token(TokenType::Slash, source, &mut state));
@@ -80,11 +81,7 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
         continue;
     }));
 
-    tokens.push(Token::new(
-        TokenType::Eof,
-        "".into(),
-        source.lines().count(),
-    ));
+    tokens.push(Token::new(TokenType::Eof, "", source.lines().count()));
     tokens
 }
 
@@ -92,7 +89,7 @@ fn new_token(token_type: TokenType, source: &str, state: &mut State) -> Token {
     let from = state.start;
     let to = state.current;
     state.start = to + 1; // move start position to the next character right after the token
-    Token::new(token_type, source[from..=to].to_string(), state.line)
+    Token::new(token_type, &source[from..=to], state.line)
 }
 
 fn next_matches(chars: &mut Peekable<CharIndices>, next: char, state: &mut State) -> bool {
@@ -133,25 +130,25 @@ mod tests {
         let source = "(){};,+-*!===<=>=!=<>/.";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::LeftParen, "(".into(), 1),
-            Token::new(TokenType::RightParen, ")".into(), 1),
-            Token::new(TokenType::LeftBrace, "{".into(), 1),
-            Token::new(TokenType::RightBrace, "}".into(), 1),
-            Token::new(TokenType::Semicolon, ";".into(), 1),
-            Token::new(TokenType::Comma, ",".into(), 1),
-            Token::new(TokenType::Plus, "+".into(), 1),
-            Token::new(TokenType::Minus, "-".into(), 1),
-            Token::new(TokenType::Star, "*".into(), 1),
-            Token::new(TokenType::BangEqual, "!=".into(), 1),
-            Token::new(TokenType::EqualEqual, "==".into(), 1),
-            Token::new(TokenType::LessEqual, "<=".into(), 1),
-            Token::new(TokenType::GreaterEqual, ">=".into(), 1),
-            Token::new(TokenType::BangEqual, "!=".into(), 1),
-            Token::new(TokenType::Less, "<".into(), 1),
-            Token::new(TokenType::Greater, ">".into(), 1),
-            Token::new(TokenType::Slash, "/".into(), 1),
-            Token::new(TokenType::Dot, ".".into(), 1),
-            Token::new(TokenType::Eof, "".into(), 1),
+            Token::new(TokenType::LeftParen, "(", 1),
+            Token::new(TokenType::RightParen, ")", 1),
+            Token::new(TokenType::LeftBrace, "{", 1),
+            Token::new(TokenType::RightBrace, "}", 1),
+            Token::new(TokenType::Semicolon, ";", 1),
+            Token::new(TokenType::Comma, ",", 1),
+            Token::new(TokenType::Plus, "+", 1),
+            Token::new(TokenType::Minus, "-", 1),
+            Token::new(TokenType::Star, "*", 1),
+            Token::new(TokenType::BangEqual, "!=", 1),
+            Token::new(TokenType::EqualEqual, "==", 1),
+            Token::new(TokenType::LessEqual, "<=", 1),
+            Token::new(TokenType::GreaterEqual, ">=", 1),
+            Token::new(TokenType::BangEqual, "!=", 1),
+            Token::new(TokenType::Less, "<", 1),
+            Token::new(TokenType::Greater, ">", 1),
+            Token::new(TokenType::Slash, "/", 1),
+            Token::new(TokenType::Dot, ".", 1),
+            Token::new(TokenType::Eof, "", 1),
         ];
         assert_eq!(tokens, expected_tokens);
     }
@@ -161,10 +158,10 @@ mod tests {
         let source = "/////  \n/*//*-\n+";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::Slash, "/".into(), 2),
-            Token::new(TokenType::Star, "*".into(), 2),
-            Token::new(TokenType::Plus, "+".into(), 3),
-            Token::new(TokenType::Eof, "".into(), 3),
+            Token::new(TokenType::Slash, "/", 2),
+            Token::new(TokenType::Star, "*", 2),
+            Token::new(TokenType::Plus, "+", 3),
+            Token::new(TokenType::Eof, "", 3),
         ];
         assert_eq!(tokens, expected_tokens);
     }
