@@ -51,9 +51,9 @@ pub enum TokenType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
-    token_type: TokenType,
-    lexeme: String,
-    line: usize,
+    pub token_type: TokenType,
+    pub lexeme: String, // is it really needed?
+    pub line: usize,
 }
 
 impl Token {

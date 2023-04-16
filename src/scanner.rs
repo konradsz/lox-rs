@@ -18,10 +18,10 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
 
     let mut chars = source.char_indices().peekable();
     tokens.extend(std::iter::from_fn(move || loop {
-        let (idx, c) = chars.next()?;
+        let (idx, ch) = chars.next()?;
         state.current = idx;
 
-        match c {
+        match ch {
             '(' => return Some(new_token(TokenType::LeftParen, source, &mut state)),
             ')' => return Some(new_token(TokenType::RightParen, source, &mut state)),
             '{' => return Some(new_token(TokenType::LeftBrace, source, &mut state)),
@@ -73,6 +73,16 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                 state.line += 1;
                 state.start += 1;
             }
+            '"' => {
+                // TODO: handle multiline strings
+                // TODO: report error on unterminated string
+                let literal = read_string(&mut chars, &mut state);
+                // TODO: do not trim when unterminated string
+                let mut token = new_token(TokenType::String(literal), source, &mut state);
+                token.lexeme = token.lexeme[1..token.lexeme.len() - 1].to_string();
+
+                return Some(token);
+            }
             _ => {
                 // report error
                 ()
@@ -94,8 +104,8 @@ fn new_token(token_type: TokenType, source: &str, state: &mut State) -> Token {
 
 fn next_matches(chars: &mut Peekable<CharIndices>, next: char, state: &mut State) -> bool {
     match chars.peek() {
-        Some((_, c)) => {
-            if c == &next {
+        Some((_, ch)) => {
+            if ch == &next {
                 chars.next();
                 state.current += 1;
                 true
@@ -108,15 +118,30 @@ fn next_matches(chars: &mut Peekable<CharIndices>, next: char, state: &mut State
 }
 
 fn ignore_until_new_line(chars: &mut Peekable<CharIndices>, state: &mut State) {
-    while let Some((_, c)) = chars.peek() {
+    while let Some((_, ch)) = chars.peek() {
         state.current += 1;
         state.start = state.current;
-        if c == &'\n' {
+        if ch == &'\n' {
             break;
         } else {
             chars.next();
         }
     }
+}
+
+fn read_string(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
+    let mut literal = String::new();
+    while let Some((_, ch)) = chars.peek() {
+        state.current += 1;
+        if ch == &'"' {
+            chars.next();
+            break;
+        } else {
+            let (_, ch) = chars.next().unwrap();
+            literal.push(ch);
+        }
+    }
+    literal
 }
 
 #[cfg(test)]
@@ -127,7 +152,7 @@ mod tests {
 
     #[test]
     fn punctuators() {
-        let source = "(){};,+-*!===<=>=!=<>/.";
+        let source = "( ){};,+-*!===<=>=!=<>/.";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::LeftParen, "(", 1),
@@ -162,6 +187,18 @@ mod tests {
             Token::new(TokenType::Star, "*", 2),
             Token::new(TokenType::Plus, "+", 3),
             Token::new(TokenType::Eof, "", 3),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+
+    #[test]
+    fn string_literals() {
+        let source = "\"\"\"string\"";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::String("".into()), "", 1),
+            Token::new(TokenType::String("string".into()), "string", 1),
+            Token::new(TokenType::Eof, "", 1),
         ];
         assert_eq!(tokens, expected_tokens);
     }
