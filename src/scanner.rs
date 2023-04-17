@@ -74,7 +74,6 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                 state.start += 1;
             }
             '"' => {
-                // TODO: handle multiline strings
                 // TODO: report error on unterminated string
                 let literal = read_string(&mut chars, &mut state);
                 // TODO: do not trim when unterminated string
@@ -139,6 +138,9 @@ fn read_string(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
         } else {
             let (_, ch) = chars.next().unwrap();
             literal.push(ch);
+            if ch == '\n' {
+                state.line += 1;
+            }
         }
     }
     literal
@@ -193,12 +195,17 @@ mod tests {
 
     #[test]
     fn string_literals() {
-        let source = "\"\"\"string\"";
+        let source = "\"\"\"string\"\"first\nsecond\"";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::String("".into()), "", 1),
             Token::new(TokenType::String("string".into()), "string", 1),
-            Token::new(TokenType::Eof, "", 1),
+            Token::new(
+                TokenType::String("first\nsecond".into()),
+                "first\nsecond",
+                2,
+            ),
+            Token::new(TokenType::Eof, "", 2),
         ];
         assert_eq!(tokens, expected_tokens);
     }
