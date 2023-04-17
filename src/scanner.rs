@@ -82,6 +82,12 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
 
                 return Some(token);
             }
+            d if d.is_digit(10) => {
+                let mut number = String::from(d);
+                number += &read_number(&mut chars, &mut state);
+                let number = number.parse().unwrap(); // TODO: handle parsing error
+                return Some(new_token(TokenType::Number(number), source, &mut state));
+            }
             _ => {
                 // report error
                 ()
@@ -141,6 +147,20 @@ fn read_string(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
             if ch == '\n' {
                 state.line += 1;
             }
+        }
+    }
+    literal
+}
+
+fn read_number(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
+    let mut literal = String::new();
+    while let Some((_, ch)) = chars.peek() {
+        if ch.is_digit(10) || ch == &'.' {
+            state.current += 1;
+            let (_, ch) = chars.next().unwrap();
+            literal.push(ch);
+        } else {
+            break;
         }
     }
     literal
@@ -206,6 +226,21 @@ mod tests {
                 2,
             ),
             Token::new(TokenType::Eof, "", 2),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+
+    #[test]
+    fn numbers() {
+        let source = "123\n123.456\n.456\n123.";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::Number(123.0), "123", 1),
+            Token::new(TokenType::Number(123.456), "123.456", 2),
+            Token::new(TokenType::Dot, ".", 3),
+            Token::new(TokenType::Number(456.0), "456", 3),
+            Token::new(TokenType::Number(123.0), "123.", 4),
+            Token::new(TokenType::Eof, "", 4),
         ];
         assert_eq!(tokens, expected_tokens);
     }

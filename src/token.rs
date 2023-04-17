@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -26,7 +26,7 @@ pub enum TokenType {
     // Literals.
     Identifier(String),
     String(String),
-    Number(String),
+    Number(f64),
 
     // Keywords.
     And,
@@ -49,7 +49,7 @@ pub enum TokenType {
     Eof,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String, // is it really needed?
