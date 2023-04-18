@@ -88,7 +88,7 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                     return Some(new_token(TokenType::Slash, source, &mut state));
                 }
             }
-            ' ' | '\t' => state.start += 1,
+            ' ' | '\t' | '\r' => state.start += 1,
             '\n' => {
                 state.line += 1;
                 state.start += 1;
@@ -349,12 +349,13 @@ mod tests {
 
     #[test]
     fn whitespaces() {
-        let source = "space    tabs				newlines \n\n \t   end";
+        let source = "space    tabs				newlines \n\n cr\r\rend";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::Identifier("space".into()), "space", 1),
             Token::new(TokenType::Identifier("tabs".into()), "tabs", 1),
             Token::new(TokenType::Identifier("newlines".into()), "newlines", 1),
+            Token::new(TokenType::Identifier("cr".into()), "cr", 3),
             Token::new(TokenType::Identifier("end".into()), "end", 3),
             Token::new(TokenType::Eof, "", 3),
         ];
