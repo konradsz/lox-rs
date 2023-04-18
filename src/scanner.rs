@@ -18,6 +18,7 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
 
     let mut chars = source.char_indices().peekable();
     tokens.extend(std::iter::from_fn(move || loop {
+        // TODO: peek here?
         let (idx, ch) = chars.next()?;
         state.current = idx;
 
@@ -87,6 +88,15 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                 number += &read_number(&mut chars, &mut state);
                 let number = number.parse().unwrap(); // TODO: handle parsing error
                 return Some(new_token(TokenType::Number(number), source, &mut state));
+            }
+            a if a.is_alphabetic() || a == '_' => {
+                let mut identifier = String::from(a);
+                identifier += &read_identifier(&mut chars, &mut state);
+                return Some(new_token(
+                    TokenType::Identifier(identifier),
+                    source,
+                    &mut state,
+                ));
             }
             _ => {
                 // report error
@@ -158,6 +168,20 @@ fn read_number(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
         if ch.is_digit(10) || ch == &'.' {
             state.current += 1;
             let (_, ch) = chars.next().unwrap();
+            literal.push(ch);
+        } else {
+            break;
+        }
+    }
+    literal
+}
+
+fn read_identifier(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
+    let mut literal = String::new();
+    while let Some((_, ch)) = chars.peek() {
+        if ch.is_alphanumeric() || ch == &'_' {
+            let (_, ch) = chars.next().unwrap();
+            state.current += 1;
             literal.push(ch);
         } else {
             break;
@@ -241,6 +265,23 @@ mod tests {
             Token::new(TokenType::Number(456.0), "456", 3),
             Token::new(TokenType::Number(123.0), "123.", 4),
             Token::new(TokenType::Eof, "", 4),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+
+    #[test]
+    fn identifiers() {
+        let source = "andy formless fo _ _123 _abc ab_123";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::Identifier("andy".into()), "andy", 1),
+            Token::new(TokenType::Identifier("formless".into()), "formless", 1),
+            Token::new(TokenType::Identifier("fo".into()), "fo", 1),
+            Token::new(TokenType::Identifier("_".into()), "_", 1),
+            Token::new(TokenType::Identifier("_123".into()), "_123", 1),
+            Token::new(TokenType::Identifier("_abc".into()), "_abc", 1),
+            Token::new(TokenType::Identifier("ab_123".into()), "ab_123", 1),
+            Token::new(TokenType::Eof, "", 1),
         ];
         assert_eq!(tokens, expected_tokens);
     }
