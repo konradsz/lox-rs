@@ -2,6 +2,25 @@ use std::{iter::Peekable, str::CharIndices};
 
 use crate::token::{Token, TokenType};
 
+static KEYWORDS: phf::Map<&'static str, TokenType> = phf::phf_map! {
+    "and" => TokenType::And,
+    "class" => TokenType::Class,
+    "else" => TokenType::Else,
+    "false" => TokenType::False,
+    "for" => TokenType::For,
+    "fun" => TokenType::Fun,
+    "if" => TokenType::If,
+    "nil" => TokenType::Nil,
+    "or" => TokenType::Or,
+    "print" => TokenType::Print,
+    "return" => TokenType::Return,
+    "super" => TokenType::Super,
+    "this" => TokenType::This,
+    "true" => TokenType::True,
+    "var" => TokenType::Var,
+    "while" => TokenType::While,
+};
+
 struct State {
     line: usize,
     start: usize,
@@ -92,11 +111,12 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
             a if a.is_alphabetic() || a == '_' => {
                 let mut identifier = String::from(a);
                 identifier += &read_identifier(&mut chars, &mut state);
-                return Some(new_token(
-                    TokenType::Identifier(identifier),
-                    source,
-                    &mut state,
-                ));
+                let token = if let Some(keyword) = KEYWORDS.get(&identifier) {
+                    new_token(keyword.to_owned(), source, &mut state)
+                } else {
+                    new_token(TokenType::Identifier(identifier), source, &mut state)
+                };
+                return Some(token);
             }
             _ => {
                 // report error
@@ -281,6 +301,33 @@ mod tests {
             Token::new(TokenType::Identifier("_123".into()), "_123", 1),
             Token::new(TokenType::Identifier("_abc".into()), "_abc", 1),
             Token::new(TokenType::Identifier("ab_123".into()), "ab_123", 1),
+            Token::new(TokenType::Eof, "", 1),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+
+    #[test]
+    fn keywords() {
+        let source =
+            "and class else false for fun if nil or print return super this true var while";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::And, "and", 1),
+            Token::new(TokenType::Class, "class", 1),
+            Token::new(TokenType::Else, "else", 1),
+            Token::new(TokenType::False, "false", 1),
+            Token::new(TokenType::For, "for", 1),
+            Token::new(TokenType::Fun, "fun", 1),
+            Token::new(TokenType::If, "if", 1),
+            Token::new(TokenType::Nil, "nil", 1),
+            Token::new(TokenType::Or, "or", 1),
+            Token::new(TokenType::Print, "print", 1),
+            Token::new(TokenType::Return, "return", 1),
+            Token::new(TokenType::Super, "super", 1),
+            Token::new(TokenType::This, "this", 1),
+            Token::new(TokenType::True, "true", 1),
+            Token::new(TokenType::Var, "var", 1),
+            Token::new(TokenType::While, "while", 1),
             Token::new(TokenType::Eof, "", 1),
         ];
         assert_eq!(tokens, expected_tokens);
