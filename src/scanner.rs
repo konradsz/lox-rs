@@ -21,100 +21,191 @@ static KEYWORDS: phf::Map<&'static str, TokenType> = phf::phf_map! {
     "while" => TokenType::While,
 };
 
-struct State {
+struct Scanner<'a> {
+    source: &'a str,
+    chars: Peekable<CharIndices<'a>>,
     line: usize,
     start: usize,
     current: usize,
 }
 
+impl<'a> Scanner<'a> {
+    fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            chars: source.char_indices().peekable(),
+            line: 1,
+            start: 0,
+            current: 0,
+        }
+    }
+
+    fn advance(&mut self) -> Option<char> {
+        let (idx, ch) = self.chars.next()?;
+        self.current = idx;
+        Some(ch)
+    }
+
+    fn new_token(&mut self, token_type: TokenType) -> Token {
+        let from = self.start;
+        let to = self.current;
+        self.start = to + 1; // move start position to the next character right after the token
+        Token::new(token_type, &self.source[from..=to], self.line)
+    }
+
+    fn next_matches(&mut self, next: char) -> bool {
+        match self.chars.peek() {
+            Some((_, ch)) => {
+                if ch == &next {
+                    self.advance();
+                    true
+                } else {
+                    false
+                }
+            }
+            None => false,
+        }
+    }
+
+    fn ignore_until_new_line(&mut self) {
+        while let Some((_, ch)) = self.chars.peek() {
+            self.current += 1;
+            self.start = self.current;
+            if ch == &'\n' {
+                break;
+            } else {
+                self.chars.next();
+            }
+        }
+    }
+
+    fn read_string(&mut self) -> String {
+        let mut literal = String::new();
+        while let Some((_, ch)) = self.chars.peek() {
+            self.current += 1;
+            if ch == &'"' {
+                self.chars.next();
+                break;
+            } else {
+                let (_, ch) = self.chars.next().unwrap();
+                literal.push(ch);
+                if ch == '\n' {
+                    self.line += 1;
+                }
+            }
+        }
+        literal
+    }
+
+    fn read_number(&mut self) -> String {
+        let mut literal = String::new();
+        while let Some((_, ch)) = self.chars.peek() {
+            if ch.is_ascii_digit() || ch == &'.' {
+                let ch = self.advance().unwrap();
+                literal.push(ch);
+            } else {
+                break;
+            }
+        }
+        literal
+    }
+
+    fn read_identifier(&mut self) -> String {
+        let mut literal = String::new();
+        while let Some((_, ch)) = self.chars.peek() {
+            if ch.is_alphanumeric() || ch == &'_' {
+                let ch = self.advance().unwrap();
+                literal.push(ch);
+            } else {
+                break;
+            }
+        }
+        literal
+    }
+}
+
 pub fn scan_tokens(source: &str) -> Vec<Token> {
     let mut tokens = Vec::new();
-    let mut state = State {
-        line: 1,
-        start: 0,
-        current: 0,
-    };
+    let mut scanner = Scanner::new(source);
 
-    let mut chars = source.char_indices().peekable();
     tokens.extend(std::iter::from_fn(move || loop {
         // TODO: peek here?
-        let (idx, ch) = chars.next()?;
-        state.current = idx;
+        let ch = scanner.advance()?;
 
         match ch {
-            '(' => return Some(new_token(TokenType::LeftParen, source, &mut state)),
-            ')' => return Some(new_token(TokenType::RightParen, source, &mut state)),
-            '{' => return Some(new_token(TokenType::LeftBrace, source, &mut state)),
-            '}' => return Some(new_token(TokenType::RightBrace, source, &mut state)),
-            ',' => return Some(new_token(TokenType::Comma, source, &mut state)),
-            '.' => return Some(new_token(TokenType::Dot, source, &mut state)),
-            '-' => return Some(new_token(TokenType::Minus, source, &mut state)),
-            '+' => return Some(new_token(TokenType::Plus, source, &mut state)),
-            ';' => return Some(new_token(TokenType::Semicolon, source, &mut state)),
-            '*' => return Some(new_token(TokenType::Star, source, &mut state)),
+            '(' => return Some(scanner.new_token(TokenType::LeftParen)),
+            ')' => return Some(scanner.new_token(TokenType::RightParen)),
+            '{' => return Some(scanner.new_token(TokenType::LeftBrace)),
+            '}' => return Some(scanner.new_token(TokenType::RightBrace)),
+            ',' => return Some(scanner.new_token(TokenType::Comma)),
+            '.' => return Some(scanner.new_token(TokenType::Dot)),
+            '-' => return Some(scanner.new_token(TokenType::Minus)),
+            '+' => return Some(scanner.new_token(TokenType::Plus)),
+            ';' => return Some(scanner.new_token(TokenType::Semicolon)),
+            '*' => return Some(scanner.new_token(TokenType::Star)),
             '!' => {
-                if next_matches(&mut chars, '=', &mut state) {
-                    return Some(new_token(TokenType::BangEqual, source, &mut state));
+                if scanner.next_matches('=') {
+                    return Some(scanner.new_token(TokenType::BangEqual));
                 } else {
-                    return Some(new_token(TokenType::Bang, source, &mut state));
+                    return Some(scanner.new_token(TokenType::Bang));
                 }
             }
             '=' => {
-                if next_matches(&mut chars, '=', &mut state) {
-                    return Some(new_token(TokenType::EqualEqual, source, &mut state));
+                if scanner.next_matches('=') {
+                    return Some(scanner.new_token(TokenType::EqualEqual));
                 } else {
-                    return Some(new_token(TokenType::Equal, source, &mut state));
+                    return Some(scanner.new_token(TokenType::Equal));
                 }
             }
             '<' => {
-                if next_matches(&mut chars, '=', &mut state) {
-                    return Some(new_token(TokenType::LessEqual, source, &mut state));
+                if scanner.next_matches('=') {
+                    return Some(scanner.new_token(TokenType::LessEqual));
                 } else {
-                    return Some(new_token(TokenType::Less, source, &mut state));
+                    return Some(scanner.new_token(TokenType::Less));
                 }
             }
             '>' => {
-                if next_matches(&mut chars, '=', &mut state) {
-                    return Some(new_token(TokenType::GreaterEqual, source, &mut state));
+                if scanner.next_matches('=') {
+                    return Some(scanner.new_token(TokenType::GreaterEqual));
                 } else {
-                    return Some(new_token(TokenType::Greater, source, &mut state));
+                    return Some(scanner.new_token(TokenType::Greater));
                 }
             }
             '/' => {
-                if next_matches(&mut chars, '/', &mut state) {
+                if scanner.next_matches('/') {
                     // comment, ignore the rest of the line
-                    ignore_until_new_line(&mut chars, &mut state);
+                    scanner.ignore_until_new_line();
                 } else {
-                    return Some(new_token(TokenType::Slash, source, &mut state));
+                    return Some(scanner.new_token(TokenType::Slash));
                 }
             }
-            ' ' | '\t' | '\r' => state.start += 1,
+            ' ' | '\t' | '\r' => scanner.start += 1,
             '\n' => {
-                state.line += 1;
-                state.start += 1;
+                scanner.line += 1;
+                scanner.start += 1;
             }
             '"' => {
                 // TODO: report error on unterminated string
-                let literal = read_string(&mut chars, &mut state);
+                let literal = scanner.read_string();
                 // TODO: do not trim when unterminated string
-                let mut token = new_token(TokenType::String(literal), source, &mut state);
+                let mut token = scanner.new_token(TokenType::String(literal));
                 token.lexeme = token.lexeme[1..token.lexeme.len() - 1].to_string();
 
                 return Some(token);
             }
-            d if d.is_digit(10) => {
+            d if d.is_ascii_digit() => {
                 let mut number = String::from(d);
-                number += &read_number(&mut chars, &mut state);
+                number += &scanner.read_number();
                 let number = number.parse().unwrap(); // TODO: handle parsing error
-                return Some(new_token(TokenType::Number(number), source, &mut state));
+                return Some(scanner.new_token(TokenType::Number(number)));
             }
             a if a.is_alphabetic() || a == '_' => {
                 let mut identifier = String::from(a);
-                identifier += &read_identifier(&mut chars, &mut state);
+                identifier += &scanner.read_identifier();
                 let token = if let Some(keyword) = KEYWORDS.get(&identifier) {
-                    new_token(keyword.to_owned(), source, &mut state)
+                    scanner.new_token(keyword.to_owned())
                 } else {
-                    new_token(TokenType::Identifier(identifier), source, &mut state)
+                    scanner.new_token(TokenType::Identifier(identifier))
                 };
                 return Some(token);
             }
@@ -128,86 +219,6 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
 
     tokens.push(Token::new(TokenType::Eof, "", source.lines().count()));
     tokens
-}
-
-fn new_token(token_type: TokenType, source: &str, state: &mut State) -> Token {
-    let from = state.start;
-    let to = state.current;
-    state.start = to + 1; // move start position to the next character right after the token
-    Token::new(token_type, &source[from..=to], state.line)
-}
-
-fn next_matches(chars: &mut Peekable<CharIndices>, next: char, state: &mut State) -> bool {
-    match chars.peek() {
-        Some((_, ch)) => {
-            if ch == &next {
-                chars.next();
-                state.current += 1;
-                true
-            } else {
-                false
-            }
-        }
-        None => false,
-    }
-}
-
-fn ignore_until_new_line(chars: &mut Peekable<CharIndices>, state: &mut State) {
-    while let Some((_, ch)) = chars.peek() {
-        state.current += 1;
-        state.start = state.current;
-        if ch == &'\n' {
-            break;
-        } else {
-            chars.next();
-        }
-    }
-}
-
-fn read_string(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
-    let mut literal = String::new();
-    while let Some((_, ch)) = chars.peek() {
-        state.current += 1;
-        if ch == &'"' {
-            chars.next();
-            break;
-        } else {
-            let (_, ch) = chars.next().unwrap();
-            literal.push(ch);
-            if ch == '\n' {
-                state.line += 1;
-            }
-        }
-    }
-    literal
-}
-
-fn read_number(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
-    let mut literal = String::new();
-    while let Some((_, ch)) = chars.peek() {
-        if ch.is_digit(10) || ch == &'.' {
-            state.current += 1;
-            let (_, ch) = chars.next().unwrap();
-            literal.push(ch);
-        } else {
-            break;
-        }
-    }
-    literal
-}
-
-fn read_identifier(chars: &mut Peekable<CharIndices>, state: &mut State) -> String {
-    let mut literal = String::new();
-    while let Some((_, ch)) = chars.peek() {
-        if ch.is_alphanumeric() || ch == &'_' {
-            let (_, ch) = chars.next().unwrap();
-            state.current += 1;
-            literal.push(ch);
-        } else {
-            break;
-        }
-    }
-    literal
 }
 
 #[cfg(test)]
