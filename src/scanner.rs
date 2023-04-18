@@ -246,7 +246,9 @@ mod tests {
 
     #[test]
     fn comments() {
-        let source = "/////  \n/*//*-\n+";
+        let source = "/////  \n\
+            /*//*-\n\
+            +";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::Slash, "/", 2),
@@ -259,7 +261,8 @@ mod tests {
 
     #[test]
     fn string_literals() {
-        let source = "\"\"\"string\"\"first\nsecond\"";
+        let source = "\"\"\"string\"\"first\n\
+            second\"";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::String("".into()), "", 1),
@@ -276,7 +279,10 @@ mod tests {
 
     #[test]
     fn numbers() {
-        let source = "123\n123.456\n.456\n123.";
+        let source = "123\n\
+            123.456\n\
+            .456\n\
+            123.";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::Number(123.0), "123", 1),
@@ -291,7 +297,8 @@ mod tests {
 
     #[test]
     fn identifiers() {
-        let source = "andy formless fo _ _123 _abc ab_123";
+        let source = "andy formless fo _ _123 _abc ab_123\n\
+            abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
             Token::new(TokenType::Identifier("andy".into()), "andy", 1),
@@ -301,7 +308,14 @@ mod tests {
             Token::new(TokenType::Identifier("_123".into()), "_123", 1),
             Token::new(TokenType::Identifier("_abc".into()), "_abc", 1),
             Token::new(TokenType::Identifier("ab_123".into()), "ab_123", 1),
-            Token::new(TokenType::Eof, "", 1),
+            Token::new(
+                TokenType::Identifier(
+                    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_".into(),
+                ),
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_",
+                2,
+            ),
+            Token::new(TokenType::Eof, "", 2),
         ];
         assert_eq!(tokens, expected_tokens);
     }
@@ -329,6 +343,20 @@ mod tests {
             Token::new(TokenType::Var, "var", 1),
             Token::new(TokenType::While, "while", 1),
             Token::new(TokenType::Eof, "", 1),
+        ];
+        assert_eq!(tokens, expected_tokens);
+    }
+
+    #[test]
+    fn whitespaces() {
+        let source = "space    tabs				newlines \n\n \t   end";
+        let tokens = scan_tokens(source);
+        let expected_tokens = vec![
+            Token::new(TokenType::Identifier("space".into()), "space", 1),
+            Token::new(TokenType::Identifier("tabs".into()), "tabs", 1),
+            Token::new(TokenType::Identifier("newlines".into()), "newlines", 1),
+            Token::new(TokenType::Identifier("end".into()), "end", 3),
+            Token::new(TokenType::Eof, "", 3),
         ];
         assert_eq!(tokens, expected_tokens);
     }
