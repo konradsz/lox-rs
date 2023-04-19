@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.70"
+itertools = "0.10.5"
 phf = { version = "0.11.1", features = ["macros"] }

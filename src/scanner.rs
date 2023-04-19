@@ -1,4 +1,6 @@
-use std::{iter::Peekable, str::CharIndices};
+use std::str::CharIndices;
+
+use itertools::{Itertools, MultiPeek};
 
 use crate::token::{Token, TokenType};
 
@@ -23,7 +25,7 @@ static KEYWORDS: phf::Map<&'static str, TokenType> = phf::phf_map! {
 
 struct Scanner<'a> {
     source: &'a str,
-    chars: Peekable<CharIndices<'a>>,
+    chars: MultiPeek<CharIndices<'a>>,
     line: usize,
     start: usize,
     current: usize,
@@ -33,7 +35,7 @@ impl<'a> Scanner<'a> {
     fn new(source: &'a str) -> Self {
         Self {
             source,
-            chars: source.char_indices().peekable(),
+            chars: source.char_indices().multipeek(),
             line: 1,
             start: 0,
             current: 0,
@@ -100,9 +102,15 @@ impl<'a> Scanner<'a> {
     fn read_number(&mut self) -> String {
         let mut literal = String::new();
         while let Some((_, ch)) = self.chars.peek() {
-            if ch.is_ascii_digit() || ch == &'.' {
-                let ch = self.advance().unwrap();
-                literal.push(ch);
+            if ch.is_ascii_digit() {
+                literal.push(self.advance().unwrap());
+            } else if ch == &'.' {
+                if let Some((_, ch2)) = self.chars.peek() {
+                    if ch2.is_ascii_digit() {
+                        literal.push(self.advance().unwrap());
+                        literal.push(self.advance().unwrap());
+                    }
+                }
             } else {
                 break;
             }
@@ -300,7 +308,8 @@ mod tests {
             Token::new(TokenType::Number(123.456), "123.456", 2),
             Token::new(TokenType::Dot, ".", 3),
             Token::new(TokenType::Number(456.0), "456", 3),
-            Token::new(TokenType::Number(123.0), "123.", 4),
+            Token::new(TokenType::Number(123.0), "123", 4),
+            Token::new(TokenType::Dot, ".", 4),
             Token::new(TokenType::Eof, "", 4),
         ];
         assert_eq!(tokens, expected_tokens);
