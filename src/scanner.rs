@@ -81,7 +81,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn read_string(&mut self) -> String {
+    fn read_string(&mut self) -> Token {
         let mut literal = String::new();
         while let Some((_, ch)) = self.chars.peek() {
             self.current += 1;
@@ -96,7 +96,11 @@ impl<'a> Scanner<'a> {
                 }
             }
         }
-        literal
+
+        let lexeme = &self.source[self.start..=self.current];
+        // trim the surrounding quotes
+        let literal = &lexeme[1..lexeme.len() - 1];
+        self.new_token(TokenType::String(literal.into()))
     }
 
     fn read_number(&mut self) -> String {
@@ -115,6 +119,8 @@ impl<'a> Scanner<'a> {
                 break;
             }
         }
+        // TODO: create token here
+        // println!("{}", &self.source[self.start..=self.current]);
         literal
     }
 
@@ -122,8 +128,7 @@ impl<'a> Scanner<'a> {
         let mut literal = String::new();
         while let Some((_, ch)) = self.chars.peek() {
             if ch.is_alphanumeric() || ch == &'_' {
-                let ch = self.advance().unwrap();
-                literal.push(ch);
+                literal.push(self.advance().unwrap());
             } else {
                 break;
             }
@@ -194,12 +199,8 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
             }
             '"' => {
                 // TODO: report error on unterminated string
-                let literal = scanner.read_string();
                 // TODO: do not trim when unterminated string
-                let mut token = scanner.new_token(TokenType::String(literal));
-                token.lexeme = token.lexeme[1..token.lexeme.len() - 1].to_string();
-
-                return Some(token);
+                return Some(scanner.read_string());
             }
             d if d.is_ascii_digit() => {
                 let mut number = String::from(d);
@@ -284,11 +285,11 @@ mod tests {
             second\"";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::String("".into()), "", 1),
-            Token::new(TokenType::String("string".into()), "string", 1),
+            Token::new(TokenType::String("".into()), "\"\"", 1),
+            Token::new(TokenType::String("string".into()), "\"string\"", 1),
             Token::new(
                 TokenType::String("first\nsecond".into()),
-                "first\nsecond",
+                "\"first\nsecond\"",
                 2,
             ),
             Token::new(TokenType::Eof, "", 2),
