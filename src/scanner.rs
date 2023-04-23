@@ -104,12 +104,12 @@ impl<'a> Scanner<'a> {
     fn read_number(&mut self) -> Token {
         while let Some((_, ch)) = self.chars.peek() {
             if ch.is_ascii_digit() {
-                self.advance().unwrap();
+                self.advance();
             } else if ch == &'.' {
                 if let Some((_, ch2)) = self.chars.peek() {
                     if ch2.is_ascii_digit() {
-                        self.advance().unwrap();
-                        self.advance().unwrap();
+                        self.advance();
+                        self.advance();
                     }
                 }
             } else {
@@ -121,16 +121,21 @@ impl<'a> Scanner<'a> {
         ))
     }
 
-    fn read_identifier(&mut self) -> String {
-        let mut literal = String::new();
+    fn read_identifier(&mut self) -> Token {
         while let Some((_, ch)) = self.chars.peek() {
             if ch.is_alphanumeric() || ch == &'_' {
-                literal.push(self.advance().unwrap());
+                self.advance();
             } else {
                 break;
             }
         }
-        literal
+
+        let identifier = &self.source[self.start..=self.current];
+        if let Some(keyword) = KEYWORDS.get(&identifier) {
+            self.new_token(keyword.to_owned())
+        } else {
+            self.new_token(TokenType::Identifier(identifier.into()))
+        }
     }
 }
 
@@ -139,7 +144,6 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
     let mut scanner = Scanner::new(source);
 
     tokens.extend(std::iter::from_fn(move || loop {
-        // TODO: peek here?
         let ch = scanner.advance()?;
 
         match ch {
@@ -194,25 +198,12 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                 scanner.line += 1;
                 scanner.start += 1;
             }
-            '"' => {
-                // TODO: report error on unterminated string
-                // TODO: do not trim when unterminated string
-                return Some(scanner.read_string());
-            }
-            d if d.is_ascii_digit() => {
-                // TODO: handle parsing error
-                return Some(scanner.read_number());
-            }
-            a if a.is_alphabetic() || a == '_' => {
-                let mut identifier = String::from(a);
-                identifier += &scanner.read_identifier();
-                let token = if let Some(keyword) = KEYWORDS.get(&identifier) {
-                    scanner.new_token(keyword.to_owned())
-                } else {
-                    scanner.new_token(TokenType::Identifier(identifier))
-                };
-                return Some(token);
-            }
+            // TODO: report error on unterminated string
+            // TODO: do not trim when unterminated string
+            '"' => return Some(scanner.read_string()),
+            // TODO: handle number parsing error
+            d if d.is_ascii_digit() => return Some(scanner.read_number()),
+            a if a.is_alphabetic() || a == '_' => return Some(scanner.read_identifier()),
             _ => {
                 // report error
                 ()
