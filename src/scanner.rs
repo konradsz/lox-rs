@@ -1,4 +1,4 @@
-use std::str::CharIndices;
+use std::str::Chars;
 
 use itertools::{Itertools, MultiPeek};
 
@@ -25,7 +25,7 @@ static KEYWORDS: phf::Map<&'static str, TokenType> = phf::phf_map! {
 
 struct Scanner<'a> {
     source: &'a str,
-    chars: MultiPeek<CharIndices<'a>>,
+    chars: MultiPeek<Chars<'a>>,
     line: usize,
     start: usize,
     current: usize,
@@ -35,7 +35,7 @@ impl<'a> Scanner<'a> {
     fn new(source: &'a str) -> Self {
         Self {
             source,
-            chars: source.char_indices().multipeek(),
+            chars: source.chars().multipeek(),
             line: 1,
             start: 0,
             current: 0,
@@ -43,21 +43,21 @@ impl<'a> Scanner<'a> {
     }
 
     fn advance(&mut self) -> Option<char> {
-        let (idx, ch) = self.chars.next()?;
-        self.current = idx;
+        let ch = self.chars.next()?;
+        self.current += 1;
         Some(ch)
     }
 
     fn new_token(&mut self, token_type: TokenType) -> Token {
         let from = self.start;
         let to = self.current;
-        self.start = to + 1; // move start position to the next character right after the token
-        Token::new(token_type, &self.source[from..=to], self.line)
+        self.start = to;
+        Token::new(token_type, &self.source[from..to], self.line)
     }
 
     fn next_matches(&mut self, next: char) -> bool {
         match self.chars.peek() {
-            Some((_, ch)) => {
+            Some(ch) => {
                 if ch == &next {
                     self.advance();
                     true
@@ -70,43 +70,41 @@ impl<'a> Scanner<'a> {
     }
 
     fn ignore_until_new_line(&mut self) {
-        while let Some((_, ch)) = self.chars.peek() {
-            self.current += 1;
+        while let Some(ch) = self.chars.peek() {
             self.start = self.current;
             if ch == &'\n' {
                 break;
             } else {
-                self.chars.next();
+                self.advance();
             }
         }
     }
 
     fn read_string(&mut self) -> Token {
-        while let Some((_, ch)) = self.chars.peek() {
-            self.current += 1;
+        while let Some(ch) = self.chars.peek() {
             if ch == &'"' {
-                self.chars.next();
+                self.advance();
                 break;
             } else {
-                let (_, ch) = self.chars.next().unwrap();
+                let ch = self.advance().unwrap();
                 if ch == '\n' {
                     self.line += 1;
                 }
             }
         }
 
-        let lexeme = &self.source[self.start..=self.current];
+        let lexeme = &self.source[self.start..self.current];
         // trim the surrounding quotes
         let literal = &lexeme[1..lexeme.len() - 1];
         self.new_token(TokenType::String(literal.into()))
     }
 
     fn read_number(&mut self) -> Token {
-        while let Some((_, ch)) = self.chars.peek() {
+        while let Some(ch) = self.chars.peek() {
             if ch.is_ascii_digit() {
                 self.advance();
             } else if ch == &'.' {
-                if let Some((_, ch2)) = self.chars.peek() {
+                if let Some(ch2) = self.chars.peek() {
                     if ch2.is_ascii_digit() {
                         self.advance();
                         self.advance();
@@ -117,12 +115,12 @@ impl<'a> Scanner<'a> {
             }
         }
         self.new_token(TokenType::Number(
-            self.source[self.start..=self.current].parse().unwrap(),
+            self.source[self.start..self.current].parse().unwrap(),
         ))
     }
 
     fn read_identifier(&mut self) -> Token {
-        while let Some((_, ch)) = self.chars.peek() {
+        while let Some(ch) = self.chars.peek() {
             if ch.is_alphanumeric() || ch == &'_' {
                 self.advance();
             } else {
@@ -130,7 +128,7 @@ impl<'a> Scanner<'a> {
             }
         }
 
-        let identifier = &self.source[self.start..=self.current];
+        let identifier = &self.source[self.start..self.current];
         if let Some(keyword) = KEYWORDS.get(&identifier) {
             self.new_token(keyword.to_owned())
         } else {
