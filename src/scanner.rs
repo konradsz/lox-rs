@@ -82,7 +82,6 @@ impl<'a> Scanner<'a> {
     }
 
     fn read_string(&mut self) -> Token {
-        let mut literal = String::new();
         while let Some((_, ch)) = self.chars.peek() {
             self.current += 1;
             if ch == &'"' {
@@ -90,7 +89,6 @@ impl<'a> Scanner<'a> {
                 break;
             } else {
                 let (_, ch) = self.chars.next().unwrap();
-                literal.push(ch);
                 if ch == '\n' {
                     self.line += 1;
                 }
@@ -103,25 +101,24 @@ impl<'a> Scanner<'a> {
         self.new_token(TokenType::String(literal.into()))
     }
 
-    fn read_number(&mut self) -> String {
-        let mut literal = String::new();
+    fn read_number(&mut self) -> Token {
         while let Some((_, ch)) = self.chars.peek() {
             if ch.is_ascii_digit() {
-                literal.push(self.advance().unwrap());
+                self.advance().unwrap();
             } else if ch == &'.' {
                 if let Some((_, ch2)) = self.chars.peek() {
                     if ch2.is_ascii_digit() {
-                        literal.push(self.advance().unwrap());
-                        literal.push(self.advance().unwrap());
+                        self.advance().unwrap();
+                        self.advance().unwrap();
                     }
                 }
             } else {
                 break;
             }
         }
-        // TODO: create token here
-        // println!("{}", &self.source[self.start..=self.current]);
-        literal
+        self.new_token(TokenType::Number(
+            self.source[self.start..=self.current].parse().unwrap(),
+        ))
     }
 
     fn read_identifier(&mut self) -> String {
@@ -203,10 +200,8 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
                 return Some(scanner.read_string());
             }
             d if d.is_ascii_digit() => {
-                let mut number = String::from(d);
-                number += &scanner.read_number();
-                let number = number.parse().unwrap(); // TODO: handle parsing error
-                return Some(scanner.new_token(TokenType::Number(number)));
+                // TODO: handle parsing error
+                return Some(scanner.read_number());
             }
             a if a.is_alphabetic() || a == '_' => {
                 let mut identifier = String::from(a);
