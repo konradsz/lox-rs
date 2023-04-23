@@ -44,7 +44,7 @@ impl<'a> Scanner<'a> {
 
     fn advance(&mut self) -> Option<char> {
         let ch = self.chars.next()?;
-        self.current += 1;
+        self.current += ch.len_utf8();
         Some(ch)
     }
 
@@ -302,7 +302,7 @@ mod tests {
 
     #[test]
     fn identifiers() {
-        let source = "andy formless fo _ _123 _abc ab_123\n\
+        let source = "andy formless fo _ _123 _abc象 ab_123\n\
             abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
@@ -311,7 +311,7 @@ mod tests {
             Token::new(TokenType::Identifier("fo".into()), "fo", 1),
             Token::new(TokenType::Identifier("_".into()), "_", 1),
             Token::new(TokenType::Identifier("_123".into()), "_123", 1),
-            Token::new(TokenType::Identifier("_abc".into()), "_abc", 1),
+            Token::new(TokenType::Identifier("_abc象".into()), "_abc象", 1),
             Token::new(TokenType::Identifier("ab_123".into()), "ab_123", 1),
             Token::new(
                 TokenType::Identifier(
