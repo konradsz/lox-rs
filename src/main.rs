@@ -6,6 +6,7 @@ use std::{
 
 mod scanner;
 mod token;
+mod visitor;
 
 fn main() -> Result<()> {
     let args = env::args().collect::<Vec<_>>();
