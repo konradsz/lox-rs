@@ -1,10 +1,12 @@
 use crate::token::Token;
 
 pub trait Visitor {
-    fn visit_binary_expr(&mut self, left: &Expr, operator: &Token, right: &Expr);
-    fn visit_grouping_expr(&mut self, expression: &Expr);
-    fn visit_literal_expr(&mut self, value: &LiteralType);
-    fn visit_unary_expr(&mut self, operator: &Token, right: &Expr);
+    type Output;
+
+    fn visit_binary_expr(&mut self, left: &Expr, operator: &Token, right: &Expr) -> Self::Output;
+    fn visit_grouping_expr(&mut self, expression: &Expr) -> Self::Output;
+    fn visit_literal_expr(&mut self, value: &LiteralType) -> Self::Output;
+    fn visit_unary_expr(&mut self, operator: &Token, right: &Expr) -> Self::Output;
 }
 pub enum Expr {
     Binary {
@@ -29,7 +31,7 @@ pub enum LiteralType {
     NumberLiteral(f64),
 }
 
-pub fn walk_expr(visitor: &mut dyn Visitor, expr: &Expr) {
+pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Output {
     match expr {
         Expr::Binary {
             left,
@@ -42,42 +44,43 @@ pub fn walk_expr(visitor: &mut dyn Visitor, expr: &Expr) {
     }
 }
 
-#[derive(Default)]
-pub struct AstPrinter {
-    pub output: String,
-}
+pub struct AstPrinter;
 
 impl AstPrinter {
-    fn parenthesize(&mut self, name: &str, expressions: &[&Expr]) {
-        self.output.push('(');
-        self.output.push_str(name);
+    fn parenthesize(&mut self, name: &str, expressions: &[&Expr]) -> String {
+        let mut output = String::new();
+        output.push('(');
+        output.push_str(name);
 
         for expr in expressions {
-            self.output.push(' ');
-            walk_expr(self, expr);
+            output.push(' ');
+            output.push_str(&walk_expr(self, expr));
         }
 
-        self.output.push(')');
+        output.push(')');
+        output
     }
 }
 
 impl Visitor for AstPrinter {
-    fn visit_binary_expr(&mut self, left: &Expr, operator: &Token, right: &Expr) {
-        self.parenthesize(&operator.lexeme, &[left, right]);
+    type Output = String;
+
+    fn visit_binary_expr(&mut self, left: &Expr, operator: &Token, right: &Expr) -> String {
+        self.parenthesize(&operator.lexeme, &[left, right])
     }
 
-    fn visit_grouping_expr(&mut self, expression: &Expr) {
-        self.parenthesize("group", &[expression]);
+    fn visit_grouping_expr(&mut self, expression: &Expr) -> String {
+        self.parenthesize("group", &[expression])
     }
 
-    fn visit_literal_expr(&mut self, value: &LiteralType) {
+    fn visit_literal_expr(&mut self, value: &LiteralType) -> String {
         match value {
-            LiteralType::StringLiteral(s) => self.output.push_str(s),
-            LiteralType::NumberLiteral(n) => self.output.push_str(&n.to_string()),
+            LiteralType::StringLiteral(s) => s.to_string(),
+            LiteralType::NumberLiteral(n) => n.to_string(),
         }
     }
 
-    fn visit_unary_expr(&mut self, operator: &Token, right: &Expr) {
-        self.parenthesize(&operator.lexeme, &[right]);
+    fn visit_unary_expr(&mut self, operator: &Token, right: &Expr) -> String {
+        self.parenthesize(&operator.lexeme, &[right])
     }
 }
