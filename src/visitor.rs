@@ -1,4 +1,7 @@
-use crate::token::Token;
+use crate::{
+    expr::{Expr, LiteralType},
+    token::Token,
+};
 
 pub trait Visitor {
     type Output;
@@ -7,28 +10,6 @@ pub trait Visitor {
     fn visit_grouping_expr(&mut self, expression: &Expr) -> Self::Output;
     fn visit_literal_expr(&mut self, value: &LiteralType) -> Self::Output;
     fn visit_unary_expr(&mut self, operator: &Token, right: &Expr) -> Self::Output;
-}
-pub enum Expr {
-    Binary {
-        left: Box<Expr>,
-        operator: Token,
-        right: Box<Expr>,
-    },
-    Grouping {
-        expression: Box<Expr>,
-    },
-    Literal {
-        value: LiteralType,
-    },
-    Unary {
-        operator: Token,
-        right: Box<Expr>,
-    },
-}
-
-pub enum LiteralType {
-    StringLiteral(String),
-    NumberLiteral(f64),
 }
 
 pub fn walk_expr<V: Visitor>(visitor: &mut V, expr: &Expr) -> V::Output {

@@ -4,6 +4,7 @@ use std::{
     io::{BufRead, Write},
 };
 
+mod expr;
 mod scanner;
 mod token;
 mod visitor;
