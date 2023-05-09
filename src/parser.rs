@@ -32,7 +32,28 @@ impl<'a> Parser<'a> {
         let mut expr = self.comparison();
 
         while self.match_types(&[TokenType::BangEqual, TokenType::EqualEqual]) {
-            let operator = self.previous();
+            let operator = self.previous().to_owned();
+            let right = self.comparison();
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+
+        expr
+    }
+
+    fn comparison(&mut self) -> Expr {
+        let mut expr = self.term();
+
+        while self.match_types(&[
+            TokenType::Greater,
+            TokenType::GreaterEqual,
+            TokenType::Less,
+            TokenType::LessEqual,
+        ]) {
+            let operator = self.previous().to_owned();
             let right = self.comparison();
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -42,6 +63,10 @@ impl<'a> Parser<'a> {
         }
 
         expr
+    }
+
+    fn term(&mut self) -> Expr {
+        todo!()
     }
 
     fn match_types(&mut self, types: &[TokenType]) -> bool {
@@ -60,10 +85,6 @@ impl<'a> Parser<'a> {
             return false;
         }
         return self.peek() == t;
-    }
-
-    fn comparison(&self) -> Expr {
-        todo!()
     }
 
     fn advance(&mut self) -> &Token {
