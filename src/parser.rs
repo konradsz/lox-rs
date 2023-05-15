@@ -66,6 +66,22 @@ impl<'a> Parser<'a> {
     }
 
     fn term(&mut self) -> Expr {
+        let mut expr = self.factor();
+
+        while self.match_types(&[TokenType::Minus, TokenType::Plus]) {
+            let operator = self.previous().to_owned();
+            let right = self.factor();
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator: operator.clone(),
+                right: Box::new(right),
+            };
+        }
+
+        return expr;
+    }
+
+    fn factor(&mut self) -> Expr {
         todo!()
     }
 
