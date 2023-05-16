@@ -98,6 +98,19 @@ impl<'a> Parser<'a> {
     }
 
     fn unary(&mut self) -> Expr {
+        if self.match_types(&[TokenType::Bang, TokenType::Minus]) {
+            let operator = self.previous().to_owned();
+            let right = self.unary();
+            Expr::Unary {
+                operator,
+                right: Box::new(right),
+            }
+        } else {
+            self.primary()
+        }
+    }
+
+    fn primary(&mut self) -> Expr {
         todo!()
     }
 
