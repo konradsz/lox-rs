@@ -78,10 +78,26 @@ impl<'a> Parser<'a> {
             };
         }
 
-        return expr;
+        expr
     }
 
     fn factor(&mut self) -> Expr {
+        let mut expr = self.unary();
+
+        while self.match_types(&[TokenType::Slash, TokenType::Star]) {
+            let operator = self.previous().to_owned();
+            let right = self.unary();
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator: operator.clone(),
+                right: Box::new(right),
+            };
+        }
+
+        expr
+    }
+
+    fn unary(&mut self) -> Expr {
         todo!()
     }
 
