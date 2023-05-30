@@ -18,7 +18,9 @@ pub enum Expr {
     },
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum LiteralType {
-    StringLiteral(String),
-    NumberLiteral(f64),
+    String(String),
+    Number(f64),
+    Boolean(bool),
 }

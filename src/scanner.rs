@@ -2,7 +2,10 @@ use std::str::Chars;
 
 use itertools::{Itertools, MultiPeek};
 
-use crate::token::{Token, TokenType};
+use crate::{
+    expr::LiteralType,
+    token::{Token, TokenType},
+};
 
 static KEYWORDS: phf::Map<&'static str, TokenType> = phf::phf_map! {
     "and" => TokenType::And,
@@ -55,6 +58,13 @@ impl<'a> Scanner<'a> {
         Token::new(token_type, &self.source[from..to], self.line)
     }
 
+    fn new_token_literal(&mut self, token_type: TokenType, literal: LiteralType) -> Token {
+        let from = self.start;
+        let to = self.current;
+        self.start = to;
+        Token::new_literal(token_type, &self.source[from..to], literal, self.line)
+    }
+
     fn next_matches(&mut self, next: char) -> bool {
         match self.chars.peek() {
             Some(ch) => {
@@ -96,7 +106,10 @@ impl<'a> Scanner<'a> {
         let lexeme = &self.source[self.start..self.current];
         // trim the surrounding quotes
         let literal = &lexeme[1..lexeme.len() - 1];
-        self.new_token(TokenType::String(literal.into()))
+        self.new_token_literal(
+            TokenType::String(literal.into()),
+            LiteralType::String(literal.into()),
+        )
     }
 
     fn read_number(&mut self) -> Token {
@@ -114,9 +127,8 @@ impl<'a> Scanner<'a> {
                 break;
             }
         }
-        self.new_token(TokenType::Number(
-            self.source[self.start..self.current].parse().unwrap(),
-        ))
+        let number = self.source[self.start..self.current].parse().unwrap();
+        self.new_token_literal(TokenType::Number(number), LiteralType::Number(number))
     }
 
     fn read_identifier(&mut self) -> Token {

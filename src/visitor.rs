@@ -56,8 +56,9 @@ impl Visitor for AstPrinter {
 
     fn visit_literal_expr(&mut self, value: &LiteralType) -> String {
         match value {
-            LiteralType::StringLiteral(s) => s.to_string(),
-            LiteralType::NumberLiteral(n) => n.to_string(),
+            LiteralType::String(s) => s.to_string(),
+            LiteralType::Number(n) => n.to_string(),
+            LiteralType::Boolean(b) => b.to_string(),
         }
     }
 
