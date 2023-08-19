@@ -1,7 +1,7 @@
 use std::{iter::Peekable, slice::Iter};
 
 use crate::{
-    expr::Expr,
+    expr::{Expr, LiteralType},
     token::{Token, TokenType},
 };
 
@@ -111,7 +111,36 @@ impl<'a> Parser<'a> {
     }
 
     fn primary(&mut self) -> Expr {
-        todo!()
+        if self.match_types(&[TokenType::False]) {
+            Expr::Literal {
+                value: LiteralType::Boolean(false),
+            }
+        } else if self.match_types(&[TokenType::True]) {
+            Expr::Literal {
+                value: LiteralType::Boolean(true),
+            }
+        } else if self.match_types(&[TokenType::Nil]) {
+            Expr::Literal {
+                value: LiteralType::Null,
+            }
+        } else if self.match_types(&[TokenType::String, TokenType::Number]) {
+            Expr::Literal {
+                value: self.previous().literal.clone().unwrap(),
+            }
+        } else if self.match_types(&[TokenType::LeftParen]) {
+            let expr = self.expression();
+            if self.check(&TokenType::RightParen) {
+                self.advance();
+            } else {
+                // TODO: better error handling
+                panic!("Expect ')' after expression");
+            }
+            Expr::Grouping {
+                expression: Box::new(expr),
+            }
+        } else {
+            panic!("no matching type!")
+        }
     }
 
     fn match_types(&mut self, types: &[TokenType]) -> bool {

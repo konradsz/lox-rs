@@ -59,6 +59,7 @@ impl Visitor for AstPrinter {
             LiteralType::String(s) => s.to_string(),
             LiteralType::Number(n) => n.to_string(),
             LiteralType::Boolean(b) => b.to_string(),
+            LiteralType::Null => String::new(),
         }
     }
 

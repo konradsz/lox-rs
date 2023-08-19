@@ -106,10 +106,7 @@ impl<'a> Scanner<'a> {
         let lexeme = &self.source[self.start..self.current];
         // trim the surrounding quotes
         let literal = &lexeme[1..lexeme.len() - 1];
-        self.new_token_literal(
-            TokenType::String(literal.into()),
-            LiteralType::String(literal.into()),
-        )
+        self.new_token_literal(TokenType::String, LiteralType::String(literal.into()))
     }
 
     fn read_number(&mut self) -> Token {
@@ -128,7 +125,7 @@ impl<'a> Scanner<'a> {
             }
         }
         let number = self.source[self.start..self.current].parse().unwrap();
-        self.new_token_literal(TokenType::Number(number), LiteralType::Number(number))
+        self.new_token_literal(TokenType::Number, LiteralType::Number(number))
     }
 
     fn read_identifier(&mut self) -> Token {
@@ -144,7 +141,7 @@ impl<'a> Scanner<'a> {
         if let Some(keyword) = KEYWORDS.get(&identifier) {
             self.new_token(keyword.to_owned())
         } else {
-            self.new_token(TokenType::Identifier(identifier.into()))
+            self.new_token(TokenType::Identifier)
         }
     }
 }
@@ -228,7 +225,10 @@ pub fn scan_tokens(source: &str) -> Vec<Token> {
 
 #[cfg(test)]
 mod tests {
-    use crate::token::{Token, TokenType};
+    use crate::{
+        expr::LiteralType,
+        token::{Token, TokenType},
+    };
 
     use super::scan_tokens;
 
@@ -281,11 +281,22 @@ mod tests {
             second\"";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::String("".into()), "\"\"", 1),
-            Token::new(TokenType::String("string".into()), "\"string\"", 1),
-            Token::new(
-                TokenType::String("first\nsecond".into()),
+            Token::new_literal(
+                TokenType::String,
+                "\"\"",
+                LiteralType::String("".to_string()),
+                1,
+            ),
+            Token::new_literal(
+                TokenType::String,
+                "\"string\"",
+                LiteralType::String("string".to_string()),
+                1,
+            ),
+            Token::new_literal(
+                TokenType::String,
                 "\"first\nsecond\"",
+                LiteralType::String("first\nsecond".to_string()),
                 2,
             ),
             Token::new(TokenType::Eof, "", 2),
@@ -301,11 +312,16 @@ mod tests {
             123.";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::Number(123.0), "123", 1),
-            Token::new(TokenType::Number(123.456), "123.456", 2),
+            Token::new_literal(TokenType::Number, "123", LiteralType::Number(123.0), 1),
+            Token::new_literal(
+                TokenType::Number,
+                "123.456",
+                LiteralType::Number(123.456),
+                2,
+            ),
             Token::new(TokenType::Dot, ".", 3),
-            Token::new(TokenType::Number(456.0), "456", 3),
-            Token::new(TokenType::Number(123.0), "123", 4),
+            Token::new_literal(TokenType::Number, "456", LiteralType::Number(456.0), 3),
+            Token::new_literal(TokenType::Number, "123", LiteralType::Number(123.0), 4),
             Token::new(TokenType::Dot, ".", 4),
             Token::new(TokenType::Eof, "", 4),
         ];
@@ -318,17 +334,15 @@ mod tests {
             abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::Identifier("andy".into()), "andy", 1),
-            Token::new(TokenType::Identifier("formless".into()), "formless", 1),
-            Token::new(TokenType::Identifier("fo".into()), "fo", 1),
-            Token::new(TokenType::Identifier("_".into()), "_", 1),
-            Token::new(TokenType::Identifier("_123".into()), "_123", 1),
-            Token::new(TokenType::Identifier("_abc象".into()), "_abc象", 1),
-            Token::new(TokenType::Identifier("ab_123".into()), "ab_123", 1),
+            Token::new(TokenType::Identifier, "andy", 1),
+            Token::new(TokenType::Identifier, "formless", 1),
+            Token::new(TokenType::Identifier, "fo", 1),
+            Token::new(TokenType::Identifier, "_", 1),
+            Token::new(TokenType::Identifier, "_123", 1),
+            Token::new(TokenType::Identifier, "_abc象", 1),
+            Token::new(TokenType::Identifier, "ab_123", 1),
             Token::new(
-                TokenType::Identifier(
-                    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_".into(),
-                ),
+                TokenType::Identifier,
                 "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_",
                 2,
             ),
@@ -369,11 +383,11 @@ mod tests {
         let source = "space    tabs				newlines \n\n cr\r\rend";
         let tokens = scan_tokens(source);
         let expected_tokens = vec![
-            Token::new(TokenType::Identifier("space".into()), "space", 1),
-            Token::new(TokenType::Identifier("tabs".into()), "tabs", 1),
-            Token::new(TokenType::Identifier("newlines".into()), "newlines", 1),
-            Token::new(TokenType::Identifier("cr".into()), "cr", 3),
-            Token::new(TokenType::Identifier("end".into()), "end", 3),
+            Token::new(TokenType::Identifier, "space", 1),
+            Token::new(TokenType::Identifier, "tabs", 1),
+            Token::new(TokenType::Identifier, "newlines", 1),
+            Token::new(TokenType::Identifier, "cr", 3),
+            Token::new(TokenType::Identifier, "end", 3),
             Token::new(TokenType::Eof, "", 3),
         ];
         assert_eq!(tokens, expected_tokens);
