@@ -1,19 +1,9 @@
 use anyhow::{bail, Context, Result};
-use parser::Parser;
+use rlox::{ast_printer::AstPrinter, parser::Parser, scanner, visitor::walk_expr};
 use std::{
     env,
     io::{BufRead, Write},
 };
-use visitor::walk_expr;
-
-use crate::ast_printer::AstPrinter;
-
-mod ast_printer;
-mod expr;
-mod parser;
-mod scanner;
-mod token;
-mod visitor;
 
 fn main() -> Result<()> {
     let args = env::args().collect::<Vec<_>>();
