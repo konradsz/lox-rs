@@ -1,9 +1,14 @@
 use anyhow::{bail, Context, Result};
+use parser::Parser;
 use std::{
     env,
     io::{BufRead, Write},
 };
+use visitor::walk_expr;
 
+use crate::ast_printer::AstPrinter;
+
+mod ast_printer;
 mod expr;
 mod parser;
 mod scanner;
@@ -53,7 +58,7 @@ fn run_file(file_name: &str) -> Result<()> {
 fn run(source: String) {
     let tokens = scanner::scan_tokens(&source);
 
-    for token in tokens {
-        println!("{token:?}");
-    }
+    let mut parser = Parser::new(&tokens);
+    let expr = parser.parse();
+    println!("{}", walk_expr(&mut AstPrinter, &expr));
 }

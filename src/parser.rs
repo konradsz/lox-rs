@@ -1,27 +1,20 @@
-use std::{iter::Peekable, slice::Iter};
-
 use crate::{
     expr::{Expr, LiteralType},
     token::{Token, TokenType},
 };
 
-struct Parser<'a> {
+pub struct Parser<'a> {
     tokens: &'a [Token],
-    current: usize, // TODO: interior mutability?
+    current: usize, // TODO: interior mutability? peek?
 }
 
-// expression     → equality ;
-// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
-// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
-// term           → factor ( ( "-" | "+" ) factor )* ;
-// factor         → unary ( ( "/" | "*" ) unary )* ;
-// unary          → ( "!" | "-" ) unary | primary ;
-// primary        → NUMBER | STRING | "true" | "false" | "nil"
-//                | "(" expression ")" ;
-
 impl<'a> Parser<'a> {
-    fn new(tokens: &'a [Token]) -> Self {
+    pub fn new(tokens: &'a [Token]) -> Self {
         Self { tokens, current: 0 }
+    }
+
+    pub fn parse(&mut self) -> Expr {
+        self.expression()
     }
 
     fn expression(&mut self) -> Expr {
@@ -139,7 +132,7 @@ impl<'a> Parser<'a> {
                 expression: Box::new(expr),
             }
         } else {
-            panic!("no matching type!")
+            panic!("Expect expression");
         }
     }
 
